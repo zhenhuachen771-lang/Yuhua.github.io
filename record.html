@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>虫害防治现场记录表 - 可扫码填写版</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif; }
+        body { background: #f0f4f8; padding: 20px; max-width: 1300px; margin: 0 auto; }
+        .container { background: white; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 25px 30px; }
+        h1 { font-size: 1.8rem; color: #2c6e2f; margin: 0 0 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; }
+        .qrcode-area { text-align: center; background: #f9fafb; border-radius: 16px; padding: 8px 12px; display: inline-block; }
+        .qrcode-area p { margin: 5px 0 0; font-size: 12px; color: #555; }
+        .form-card { background: #fefefe; border: 1px solid #e2e8f0; border-radius: 24px; padding: 20px; margin: 20px 0; }
+        .form-title { font-size: 1.4rem; font-weight: 600; margin-bottom: 20px; color: #1f4a2c; border-left: 5px solid #2c6e2f; padding-left: 12px; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; margin-bottom: 18px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-weight: 500; margin-bottom: 6px; font-size: 0.85rem; color: #2d3e50; }
+        input, select, textarea { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 14px; font-size: 0.9rem; background: white; }
+        input:focus, select:focus { border-color: #2c6e2f; outline: none; box-shadow: 0 0 0 2px rgba(44,110,47,0.2); }
+        button { background: #2c6e2f; color: white; border: none; padding: 10px 20px; border-radius: 40px; font-size: 0.9rem; cursor: pointer; margin-right: 12px; margin-top: 8px; transition: 0.2s; }
+        button:hover { background: #1e4a22; transform: translateY(-1px); }
+        .btn-excel { background: #1e6f5c; }
+        .btn-excel:hover { background: #0e5a4a; }
+        .btn-clear { background: #8b8c8f; }
+        .record-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.8rem; overflow-x: auto; display: block; }
+        .record-table th, .record-table td { border: 1px solid #ddd; padding: 8px 6px; text-align: left; vertical-align: top; }
+        .record-table th { background: #e9f3e9; position: sticky; top: 0; }
+        .delete-btn { background: #e74c3c; padding: 4px 10px; font-size: 0.7rem; border-radius: 20px; }
+        .stats { background: #eef2f5; padding: 12px 18px; border-radius: 20px; margin: 20px 0; font-size: 0.85rem; }
+        footer { text-align: center; font-size: 0.75rem; color: #6c757d; margin-top: 20px; }
+        @media (max-width: 700px) { .form-row { grid-template-columns: 1fr; } .record-table { font-size: 0.7rem; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>
+        <span>🐜 虫害防治现场记录表</span>
+        <div class="qrcode-area" id="qrcode"></div>
+    </h1>
+    <p style="margin-bottom: 15px;">📱 扫码打开本页，选择点位并填写检查情况</p>
+
+    <div class="form-card">
+        <div class="form-title">📋 新增检查记录</div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>设备类型 *</label>
+                <select id="deviceType">
+                    <option value="鼠饵站">鼠饵站 (R-01 ~ R-35)</option>
+                    <option value="蚊蝇灯">蚊蝇灯 (L-01 ~ L-26)</option>
+                    <option value="粘鼠板">粘鼠板 (G-01 ~ G-70)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>点位编号 *</label>
+                <select id="pointIdSelect"></select>
+            </div>
+            <div class="form-group">
+                <label>检查日期 *</label>
+                <input type="date" id="checkDate" required>
+            </div>
+            <div class="form-group">
+                <label>状态 / 运行情况</label>
+                <select id="status">
+                    <option value="正常">正常</option>
+                    <option value="需更换">需更换</option>
+                    <option value="损坏">损坏</option>
+                    <option value="缺失">缺失</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>是否更换 / 维护</label>
+                <select id="isReplaced">
+                    <option value="否">否</option>
+                    <option value="是">是</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>投药数量 (g/个/片)</label>
+                <input type="number" id="dosage" placeholder="数字" step="0.1" value="0">
+            </div>
+            <div class="form-group">
+                <label>是否有取食</label>
+                <select id="hasBait">
+                    <option value="无">无</option>
+                    <option value="少量">少量</option>
+                    <option value="中等">中等</option>
+                    <option value="大量">大量</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>取食量估算 (g)</label>
+                <input type="number" id="baitAmount" step="0.1" value="0">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group" id="lightStickerGroup" style="display: none;">
+                <label>灭蝇灯粘布情况</label>
+                <select id="lightSticker">
+                    <option value="干净">干净</option>
+                    <option value="少量蚊虫">少量蚊虫</option>
+                    <option value="较多蚊虫">较多蚊虫</option>
+                    <option value="需更换">需更换</option>
+                    <option value="已更换">已更换</option>
+                </select>
+            </div>
+            <div class="form-group" id="glueBoardGroup" style="display: none;">
+                <label>粘鼠板粘补情况</label>
+                <select id="glueBoardStatus">
+                    <option value="无捕获">无捕获</option>
+                    <option value="捕获1只">捕获1只</option>
+                    <option value="捕获2只">捕获2只</option>
+                    <option value="捕获3只及以上">捕获3只及以上</option>
+                    <option value="粘性下降">粘性下降</option>
+                </select>
+            </div>
+            <div class="form-group" id="baitStationGroup" style="display: none;">
+                <label>鼠饵站备注</label>
+                <input type="text" id="baitStationRemark" placeholder="饵料消耗情况等">
+            </div>
+            <div class="form-group">
+                <label>通用备注</label>
+                <input type="text" id="remark" placeholder="其他情况">
+            </div>
+        </div>
+        <div>
+            <button id="addRecordBtn">✅ 添加记录</button>
+            <button id="exportExcelBtn" class="btn-excel">📎 导出Excel</button>
+            <button id="clearAllBtn" class="btn-clear">🗑️ 清空所有记录</button>
+        </div>
+    </div>
+
+    <div class="form-title">📋 历史记录 (按时间倒序)</div>
+    <div style="overflow-x: auto;">
+        <table class="record-table" id="recordTable">
+            <thead>
+                <tr><th>点位编号</th><th>设备类型</th><th>检查日期</th><th>状态</th><th>是否更换</th>
+                    <th>投药数量(g)</th><th>取食情况</th><th>取食量(g)</th>
+                    <th>灭蝇灯粘布情况</th><th>粘鼠板粘补情况</th><th>备注</th><th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="recordTbody"><tr><td colspan="12">暂无记录</td></tr></tbody>
+        </table>
+    </div>
+    <div class="stats" id="statsInfo"></div>
+    <footer>数据保存在浏览器本地，导出Excel后可永久保存。扫码即可填写，建议部署到公网使用。</footer>
+</div>
+
+<script>
+    const RAT = Array.from({length:35},(_,i)=>`R-${String(i+1).padStart(2,'0')}`);
+    const LIGHT = Array.from({length:26},(_,i)=>`L-${String(i+1).padStart(2,'0')}`);
+    const GLUE = Array.from({length:70},(_,i)=>`G-${String(i+1).padStart(2,'0')}`);
+
+    function updatePointSelect() {
+        const type = document.getElementById('deviceType').value;
+        let list = type==='鼠饵站'? RAT : type==='蚊蝇灯'? LIGHT : GLUE;
+        const sel = document.getElementById('pointIdSelect');
+        sel.innerHTML = list.map(v=>`<option value="${v}">${v}</option>`).join('');
+    }
+    function updateDynamicFields() {
+        const type = document.getElementById('deviceType').value;
+        document.getElementById('lightStickerGroup').style.display = type==='蚊蝇灯' ? 'flex' : 'none';
+        document.getElementById('glueBoardGroup').style.display = type==='粘鼠板' ? 'flex' : 'none';
+        document.getElementById('baitStationGroup').style.display = type==='鼠饵站' ? 'flex' : 'none';
+    }
+    const STORAGE = 'pest_records_final';
+    let records = [];
+    function load() {
+        const stored = localStorage.getItem(STORAGE);
+        if(stored) try{ records = JSON.parse(stored); }catch(e){ records=[]; }
+        if(!records.length){
+            records = [
+                { pointId:"R-05", deviceType:"鼠饵站", checkDate:"2026-04-01", status:"正常", isReplaced:"否", dosage:20, hasBait:"少量", baitAmount:5, lightSticker:"", glueBoardStatus:"", baitStationRemark:"饵料消耗约5g", remark:"有取食" },
+                { pointId:"L-02", deviceType:"蚊蝇灯", checkDate:"2026-04-02", status:"需更换", isReplaced:"是", dosage:0, hasBait:"无", baitAmount:0, lightSticker:"需更换", glueBoardStatus:"", baitStationRemark:"", remark:"灯管老化" },
+                { pointId:"G-15", deviceType:"粘鼠板", checkDate:"2026-04-03", status:"正常", isReplaced:"否", dosage:0, hasBait:"无", baitAmount:0, lightSticker:"", glueBoardStatus:"捕获1只", baitStationRemark:"", remark:"" }
+            ];
+            save();
+        }
+        render();
+    }
+    function save() { localStorage.setItem(STORAGE, JSON.stringify(records)); render(); }
+    function render() {
+        const tbody = document.getElementById('recordTbody');
+        if(!records.length){ tbody.innerHTML='<tr><td colspan="12">暂无记录</td></tr>'; document.getElementById('statsInfo').innerHTML=''; return; }
+        const sorted = [...records].sort((a,b)=>new Date(b.checkDate)-new Date(a.checkDate));
+        tbody.innerHTML = sorted.map((rec,idx)=>{
+            const orig = records.findIndex(r=>r===rec);
+            return `<tr>
+                <td>${escapeHtml(rec.pointId)}</td><td>${escapeHtml(rec.deviceType)}</td><td>${escapeHtml(rec.checkDate)}</td>
+                <td>${escapeHtml(rec.status)}</td><td>${escapeHtml(rec.isReplaced)}</td><td>${rec.dosage}</td>
+                <td>${escapeHtml(rec.hasBait)}</td><td>${rec.baitAmount}</td>
+                <td>${escapeHtml(rec.lightSticker||'')}</td><td>${escapeHtml(rec.glueBoardStatus||'')}</td>
+                <td>${escapeHtml(rec.remark||'')}</td>
+                <td><button class="delete-btn" data-index="${orig}">删除</button></td>
+            </tr>`;
+        }).join('');
+        document.querySelectorAll('.delete-btn').forEach(btn=>btn.addEventListener('click',e=>{
+            const i = parseInt(btn.dataset.index);
+            if(!isNaN(i)){ records.splice(i,1); save(); }
+        }));
+        const total=records.length, rat=records.filter(r=>r.deviceType==='鼠饵站').length;
+        const light=records.filter(r=>r.deviceType==='蚊蝇灯').length, glue=records.filter(r=>r.deviceType==='粘鼠板').length;
+        const replaced=records.filter(r=>r.isReplaced==='是').length, dosageSum=records.reduce((s,r)=>s+(parseFloat(r.dosage)||0),0);
+        const eaten=records.filter(r=>r.hasBait!=='无').length;
+        document.getElementById('statsInfo').innerHTML = `📊 总记录:${total} | 鼠饵站:${rat} | 蚊蝇灯:${light} | 粘鼠板:${glue}<br>🔄 已更换:${replaced}次 | 累计投药:${dosageSum}g | 有取食:${eaten}条`;
+    }
+    function escapeHtml(s){ if(!s) return ''; return s.replace(/[&<>]/g,function(m){if(m==='&')return'&amp;';if(m==='<')return'&lt;';if(m==='>')return'&gt;';return m;}); }
+    function addRecord(){
+        const pointId = document.getElementById('pointIdSelect').value;
+        const deviceType = document.getElementById('deviceType').value;
+        const checkDate = document.getElementById('checkDate').value;
+        const status = document.getElementById('status').value;
+        const isReplaced = document.getElementById('isReplaced').value;
+        let dosage = parseFloat(document.getElementById('dosage').value)||0;
+        const hasBait = document.getElementById('hasBait').value;
+        let baitAmount = parseFloat(document.getElementById('baitAmount').value)||0;
+        const remark = document.getElementById('remark').value;
+        let lightSticker='', glueBoardStatus='', baitStationRemark='';
+        if(deviceType==='蚊蝇灯') lightSticker = document.getElementById('lightSticker').value;
+        if(deviceType==='粘鼠板') glueBoardStatus = document.getElementById('glueBoardStatus').value;
+        if(deviceType==='鼠饵站') baitStationRemark = document.getElementById('baitStationRemark').value;
+        if(!pointId || !checkDate){ alert('请填写点位编号和日期'); return; }
+        records.push({ pointId, deviceType, checkDate, status, isReplaced, dosage, hasBait, baitAmount, lightSticker, glueBoardStatus, baitStationRemark, remark });
+        save();
+        document.getElementById('status').value='正常';
+        document.getElementById('isReplaced').value='否';
+        document.getElementById('dosage').value='0';
+        document.getElementById('hasBait').value='无';
+        document.getElementById('baitAmount').value='0';
+        document.getElementById('remark').value='';
+        if(deviceType==='蚊蝇灯') document.getElementById('lightSticker').value='干净';
+        if(deviceType==='粘鼠板') document.getElementById('glueBoardStatus').value='无捕获';
+        if(deviceType==='鼠饵站') document.getElementById('baitStationRemark').value='';
+        document.getElementById('checkDate').value = new Date().toISOString().slice(0,10);
+    }
+    function exportExcel(){
+        if(!records.length){ alert('无数据'); return; }
+        const headers = ['点位编号','设备类型','检查日期','状态','是否更换','投药数量(g)','取食情况','取食量(g)','灭蝇灯粘布情况','粘鼠板粘补情况','鼠饵站备注','通用备注'];
+        const data = records.map(r=>[r.pointId, r.deviceType, r.checkDate, r.status, r.isReplaced, r.dosage, r.hasBait, r.baitAmount, r.lightSticker||'', r.glueBoardStatus||'', r.baitStationRemark||'', r.remark||'']);
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '虫害记录');
+        XLSX.writeFile(wb, `虫害记录_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.xlsx`);
+    }
+    function clearAll(){ if(confirm('清空所有记录？不可恢复')){ records=[]; save(); } }
+    function generateQR(){
+        const url = window.location.href;
+        const div = document.getElementById('qrcode');
+        div.innerHTML='';
+        new QRCode(div, { text: url, width:100, height:100, colorDark:"#2c6e2f", correctLevel: QRCode.CorrectLevel.M });
+        const p = document.createElement('p');
+        p.innerText='扫码记录';
+        div.appendChild(p);
+    }
+    window.onload = ()=>{
+        load();
+        generateQR();
+        updatePointSelect();
+        updateDynamicFields();
+        document.getElementById('deviceType').addEventListener('change',()=>{ updatePointSelect(); updateDynamicFields(); });
+        document.getElementById('addRecordBtn').addEventListener('click',addRecord);
+        document.getElementById('exportExcelBtn').addEventListener('click',exportExcel);
+        document.getElementById('clearAllBtn').addEventListener('click',clearAll);
+        document.getElementById('checkDate').value = new Date().toISOString().slice(0,10);
+    };
+</script>
+</body>
+</html>
